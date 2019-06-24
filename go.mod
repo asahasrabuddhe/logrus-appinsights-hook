@@ -1,4 +1,4 @@
-module github.com/asahasrabuddhe/logrus-appinsights
+module go.ajitem.com/logrus-appinsights-hook
 
 go 1.12
 
