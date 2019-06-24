@@ -26,10 +26,14 @@ func (r *Request) AddMeasurement(key string, value float64) {
 	r.measurements[key] = value
 }
 
-func (r *Request) GetTelemetry() *appinsights.RequestTelemetry {
+func (r *Request) GetTelemetry(sessionId string) *appinsights.RequestTelemetry {
 	request := appinsights.NewRequestTelemetry(r.method, r.uri, r.duration, r.responseCode)
 	request.Properties = r.properties
 	request.Measurements = r.measurements
+
+	if sessionId != "" {
+		request.Tags.Session().SetId(sessionId)
+	}
 
 	return request
 }

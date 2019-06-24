@@ -27,9 +27,13 @@ func (d *Dependency) AddMeasurement(key string, value float64) {
 	d.measurements[key] = value
 }
 
-func (d *Dependency) GetTelemetry() *appinsights.RemoteDependencyTelemetry {
+func (d *Dependency) GetTelemetry(sessionId string) *appinsights.RemoteDependencyTelemetry {
 	dependency := appinsights.NewRemoteDependencyTelemetry(d.name, d.dependencyType, d.target, d.success)
 	dependency.Duration = d.duration
+
+	if sessionId != "" {
+		dependency.Tags.Session().SetId(sessionId)
+	}
 
 	return dependency
 }

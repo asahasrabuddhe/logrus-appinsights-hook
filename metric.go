@@ -12,9 +12,13 @@ func (m *Metric) AddProperty(key, value string) {
 	m.properties[key] = value
 }
 
-func (m *Metric) GetTelemetry() *appinsights.MetricTelemetry {
+func (m *Metric) GetTelemetry(sessionId string) *appinsights.MetricTelemetry {
 	metric := appinsights.NewMetricTelemetry(m.name, m.value)
 	metric.Properties = m.properties
+
+	if sessionId != "" {
+		metric.Tags.Session().SetId(sessionId)
+	}
 
 	return metric
 }

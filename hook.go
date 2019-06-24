@@ -69,19 +69,31 @@ func (a *ApplicationInsightsHook) Fire(e *logrus.Entry) error {
 				a.client.Track(trace)
 			case EventField:
 				if event, ok := val.(*Event); ok {
+					if val, ok := e.Data["session_id"]; ok {
+
+					}
 					a.client.Track(event.GetTelemetry())
 				}
 			case MetricField:
 				if metric, ok := val.(*Metric); ok {
+					if val, ok := e.Data["session_id"]; ok {
+
+					}
 					a.client.Track(metric.GetTelemetry())
 				}
 				delete(e.Data, MetricField)
 			case RequestField:
 				if request, ok := val.(*Request); ok {
+					if val, ok := e.Data["session_id"]; ok {
+
+					}
 					a.client.Track(request.GetTelemetry())
 				}
 			case DependencyField:
 				if dependency, ok := val.(*Dependency); ok {
+					if val, ok := e.Data["session_id"]; ok {
+
+					}
 					a.client.Track(dependency.GetTelemetry())
 				}
 			}

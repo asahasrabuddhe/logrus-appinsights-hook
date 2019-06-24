@@ -1,8 +1,8 @@
 package main
 
 import (
-	logrusApplicationInsightsHook "github.com/asahasrabuddhe/logrus-appinsights"
 	"github.com/sirupsen/logrus"
+	logrusApplicationInsightsHook "go.ajitem.com/logrus-appinsights-hook"
 	"log"
 	"time"
 )
@@ -29,6 +29,7 @@ func main() {
 	logrus.SetLevel(logrus.TraceLevel)
 
 	logrus.AddHook(hook)
+
 
 	lg := logrus.WithField(logrusApplicationInsightsHook.SessionIdField, "s1234")
 

@@ -20,10 +20,14 @@ func (e *Event) AddMeasurement(key string, value float64) {
 	e.measurements[key] = value
 }
 
-func (e *Event) GetTelemetry() *appinsights.EventTelemetry {
+func (e *Event) GetTelemetry(sessionId string) *appinsights.EventTelemetry {
 	event := appinsights.NewEventTelemetry(e.name)
 	event.Properties = e.properties
 	event.Measurements = e.measurements
+
+	if sessionId != "" {
+		event.Tags.Session().SetId(sessionId)
+	}
 
 	return event
 }
