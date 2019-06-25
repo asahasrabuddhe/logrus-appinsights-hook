@@ -1,6 +1,7 @@
 package logrusApplicationInsightsHook
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Microsoft/ApplicationInsights-Go/appinsights"
@@ -10,7 +11,14 @@ import (
 )
 
 const (
-	SessionIdField  string = "app_insights_session_id"
+	TelemetryType       string = "app_insights_telemetry_type"
+	EventTelemetry      string = "app_insights_event_telemetry"
+	MetricTelemetry     string = "app_insights_metric_telemetry"
+	RequestTelemetry    string = "app_insights_request_telemetry"
+	DependencyTelemetry string = "app_insights_dependency_telemetry"
+)
+
+const (
 	EventField      string = "app_insights_event"
 	MetricField     string = "app_insights_metric"
 	RequestField    string = "app_insights_request"
@@ -39,77 +47,90 @@ var levels = map[logrus.Level]contracts.SeverityLevel{
 
 type ApplicationInsightsHook struct {
 	client         appinsights.TelemetryClient
-	async          bool
 	levels         []logrus.Level
 	excludedFields map[string]struct{}
 	filters        map[string]func(interface{}) interface{}
 }
 
 func (a *ApplicationInsightsHook) Fire(e *logrus.Entry) error {
-	if e.Level == logrus.ErrorLevel || e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
-		if val, ok := e.Data["error"].(error); ok {
-			a.client.TrackException(val)
-		} else {
-			a.client.TrackException(errors.New(e.Message))
-		}
-
-		if e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
-			<-a.client.Channel().Close()
-		}
-
-	} else {
-		for key, val := range e.Data {
-			switch key {
-			case SessionIdField:
-				trace := appinsights.NewTraceTelemetry(e.Message, levels[e.Level])
-				if sessionId, ok := val.(string); ok {
-					trace.Tags.Session().SetId(sessionId)
-					e.Data["session_id"] = sessionId
+	if telemetryType, ok := e.Data[TelemetryType]; ok {
+		switch telemetryType {
+		case EventTelemetry:
+			if et, ok := e.Data[EventField].(*Event); ok {
+				if sessionId, ok := e.Data["session_id"].(string); ok {
+					et.SetSessionId(sessionId)
 				}
-				a.client.Track(trace)
-			case EventField:
-				if event, ok := val.(*Event); ok {
-					if val, ok := e.Data["session_id"]; ok {
 
-					}
-					a.client.Track(event.GetTelemetry())
+				a.client.Track(et.GetTelemetry())
+			} else {
+				return errors.New("event telemetry expects an event field")
+			}
+		case MetricTelemetry:
+			if mt, ok := e.Data[MetricField].(*Metric); ok {
+				if sessionId, ok := e.Data["session_id"].(string); ok {
+					mt.SetSessionId(sessionId)
 				}
-			case MetricField:
-				if metric, ok := val.(*Metric); ok {
-					if val, ok := e.Data["session_id"]; ok {
 
-					}
-					a.client.Track(metric.GetTelemetry())
+				a.client.Track(mt.GetTelemetry())
+			} else {
+				return errors.New("metric telemetry expects an metric field")
+			}
+		case RequestTelemetry:
+			if rt, ok := e.Data[RequestField].(*Request); ok {
+				if sessionId, ok := e.Data["session_id"].(string); ok {
+					rt.SetSessionId(sessionId)
 				}
-				delete(e.Data, MetricField)
-			case RequestField:
-				if request, ok := val.(*Request); ok {
-					if val, ok := e.Data["session_id"]; ok {
 
-					}
-					a.client.Track(request.GetTelemetry())
+				a.client.Track(rt.GetTelemetry())
+			} else {
+				return errors.New("request telemetry expects an request field")
+			}
+		case DependencyTelemetry:
+			if dt, ok := e.Data[DependencyField].(*Dependency); ok {
+				if sessionId, ok := e.Data["session_id"].(string); ok {
+					dt.SetSessionId(sessionId)
 				}
-			case DependencyField:
-				if dependency, ok := val.(*Dependency); ok {
-					if val, ok := e.Data["session_id"]; ok {
 
-					}
-					a.client.Track(dependency.GetTelemetry())
-				}
+				a.client.Track(dt.GetTelemetry())
+			} else {
+				return errors.New("dependency telemetry expects an dependency field")
 			}
 
-			delete(e.Data, key)
+		default:
+			return errors.New("invalid telemetry type defined")
+		}
+
+		delete(e.Data, telemetryType)
+
+	} else {
+		if e.Level == logrus.ErrorLevel || e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
+			if val, ok := e.Data["error"].(error); ok {
+				a.client.TrackException(val)
+			} else {
+				a.client.TrackException(errors.New(e.Message))
+			}
+
+			if e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
+				<-a.client.Channel().Close()
+			}
+
+		} else {
+			trace := appinsights.NewTraceTelemetry(e.Message, levels[e.Level])
+			for key, val := range e.Data {
+				if sessionId, ok := e.Data["session_id"].(string); ok {
+					trace.Tags.Session().SetId(sessionId)
+					e.Data["session_id"] = sessionId
+					delete(e.Data, key)
+				} else {
+					fVal, _ := formatData(val)
+					trace.Properties[key] = fVal
+				}
+			}
+			a.client.Track(trace)
 		}
 	}
+
 	return nil
-}
-
-func (a *ApplicationInsightsHook) Async() bool {
-	return a.async
-}
-
-func (a *ApplicationInsightsHook) SetAsync(async bool) {
-	a.async = async
 }
 
 func (a *ApplicationInsightsHook) Levels() []logrus.Level {
@@ -129,9 +150,12 @@ type ApplicationInsightsHookOpts struct {
 	EndpointUrl        string
 	MaxBatchSize       int
 	MaxBatchInterval   time.Duration
+	Role               string
+	Version            string
+	Debug              bool
 }
 
-func NewApplicationInsightsHook(name string, opts ApplicationInsightsHookOpts) (*ApplicationInsightsHook, error) {
+func NewApplicationInsightsHook(opts ApplicationInsightsHookOpts) (*ApplicationInsightsHook, error) {
 	if opts.InstrumentationKey == "" {
 		return nil, errors.New("instrumentation key is not provided")
 	}
@@ -152,14 +176,20 @@ func NewApplicationInsightsHook(name string, opts ApplicationInsightsHookOpts) (
 
 	client := appinsights.NewTelemetryClientFromConfig(config)
 
-	if name != "" {
-		client.Context().Tags.Cloud().SetRole(name)
+	if opts.Role != "" {
+		client.Context().Tags.Cloud().SetRole(opts.Role)
 	}
 
-	appinsights.NewDiagnosticsMessageListener(func(msg string) error {
-		fmt.Printf("[%s] %s\n", time.Now().Format(time.UnixDate), msg)
-		return nil
-	})
+	if opts.Version != "" {
+		client.Context().Tags.Application().SetVer(opts.Version)
+	}
+
+	if opts.Debug {
+		appinsights.NewDiagnosticsMessageListener(func(msg string) error {
+			fmt.Printf("[%s] %s\n", time.Now().Format(time.UnixDate), msg)
+			return nil
+		})
+	}
 
 	return &ApplicationInsightsHook{
 		client:         client,
@@ -167,4 +197,22 @@ func NewApplicationInsightsHook(name string, opts ApplicationInsightsHookOpts) (
 		excludedFields: make(map[string]struct{}),
 		filters:        make(map[string]func(interface{}) interface{}),
 	}, nil
+}
+
+// formatData returns value as a suitable format.
+func formatData(value interface{}) (string, error) {
+	switch value := value.(type) {
+	case json.Marshaler:
+		if bytes, err := value.MarshalJSON(); err != nil {
+			return string(bytes), nil
+		} else {
+			return "", err
+		}
+	case error:
+		return value.Error(), nil
+	case fmt.Stringer:
+		return value.String(), nil
+	default:
+		return fmt.Sprintf("%v", value), nil
+	}
 }

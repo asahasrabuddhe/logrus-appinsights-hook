@@ -11,12 +11,15 @@ func main() {
 	defer recoverFunc()
 
 	opts := logrusApplicationInsightsHook.ApplicationInsightsHookOpts{
-		InstrumentationKey: "instrumentation key",
+		InstrumentationKey: "336df4c0-068f-4dc0-99c8-84594f17590c",
 		MaxBatchSize:       10,
 		MaxBatchInterval:   2 * time.Second,
+		Role:               "myapptest",
+		Version:            "0.1.2-staging",
+		Debug:              true,
 	}
 
-	hook, err := logrusApplicationInsightsHook.NewApplicationInsightsHook("test 2", opts)
+	hook, err := logrusApplicationInsightsHook.NewApplicationInsightsHook(opts)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,8 +33,7 @@ func main() {
 
 	logrus.AddHook(hook)
 
-
-	lg := logrus.WithField(logrusApplicationInsightsHook.SessionIdField, "s1234")
+	lg := logrus.WithField("session_id", "s1234")
 
 	lg.Trace("trace")
 	lg.Debug("debug")
@@ -39,9 +41,18 @@ func main() {
 	sampleEvent := logrusApplicationInsightsHook.NewEvent("sample event")
 	sampleEvent.AddProperty("property", "value")
 
-	lg.WithField(logrusApplicationInsightsHook.EventField, sampleEvent).Info("info")
+	lg.WithFields(logrus.Fields{
+		logrusApplicationInsightsHook.TelemetryType: logrusApplicationInsightsHook.EventTelemetry,
+		logrusApplicationInsightsHook.EventField:    sampleEvent,
+	}).Info("info")
 
-	lg.Warn("warn")
+	lgg := logrus.WithFields(logrus.Fields{
+		"field1": 1,
+		"field2": "two",
+		"field3": 3.3,
+	})
+
+	lgg.Warn("warn")
 	//lg.Error("error")
 	//lg.Fatal("fatal")
 	//lg.Panic("panic")

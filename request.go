@@ -10,6 +10,7 @@ type Request struct {
 	uri          string
 	duration     time.Duration
 	responseCode string
+	sessionId    string
 	properties   map[string]string
 	measurements map[string]float64
 }
@@ -26,13 +27,17 @@ func (r *Request) AddMeasurement(key string, value float64) {
 	r.measurements[key] = value
 }
 
-func (r *Request) GetTelemetry(sessionId string) *appinsights.RequestTelemetry {
+func (r *Request) SetSessionId(sessionId string) {
+	r.sessionId = sessionId
+}
+
+func (r *Request) GetTelemetry() *appinsights.RequestTelemetry {
 	request := appinsights.NewRequestTelemetry(r.method, r.uri, r.duration, r.responseCode)
 	request.Properties = r.properties
 	request.Measurements = r.measurements
 
-	if sessionId != "" {
-		request.Tags.Session().SetId(sessionId)
+	if r.sessionId != "" {
+		request.Tags.Session().SetId(r.sessionId)
 	}
 
 	return request
