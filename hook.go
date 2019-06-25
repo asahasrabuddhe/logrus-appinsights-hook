@@ -12,6 +12,7 @@ import (
 
 const (
 	TelemetryType       string = "app_insights_telemetry_type"
+	LogOnly             string = "app_insights_log_only_telemetry"
 	EventTelemetry      string = "app_insights_event_telemetry"
 	MetricTelemetry     string = "app_insights_metric_telemetry"
 	RequestTelemetry    string = "app_insights_request_telemetry"
@@ -55,6 +56,8 @@ type ApplicationInsightsHook struct {
 func (a *ApplicationInsightsHook) Fire(e *logrus.Entry) error {
 	if telemetryType, ok := e.Data[TelemetryType]; ok {
 		switch telemetryType {
+		case LogOnly:
+			return nil
 		case EventTelemetry:
 			if et, ok := e.Data[EventField].(*Event); ok {
 				if sessionId, ok := e.Data["session_id"].(string); ok {
@@ -100,7 +103,7 @@ func (a *ApplicationInsightsHook) Fire(e *logrus.Entry) error {
 			return errors.New("invalid telemetry type defined")
 		}
 
-		delete(e.Data, telemetryType)
+		delete(e.Data, telemetryType.(string))
 
 	} else {
 		if e.Level == logrus.ErrorLevel || e.Level == logrus.FatalLevel || e.Level == logrus.PanicLevel {
@@ -120,7 +123,6 @@ func (a *ApplicationInsightsHook) Fire(e *logrus.Entry) error {
 				if sessionId, ok := e.Data["session_id"].(string); ok {
 					trace.Tags.Session().SetId(sessionId)
 					e.Data["session_id"] = sessionId
-					delete(e.Data, key)
 				} else {
 					fVal, _ := formatData(val)
 					trace.Properties[key] = fVal

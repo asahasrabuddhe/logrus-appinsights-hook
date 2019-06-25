@@ -11,7 +11,7 @@ func main() {
 	defer recoverFunc()
 
 	opts := logrusApplicationInsightsHook.ApplicationInsightsHookOpts{
-		InstrumentationKey: "336df4c0-068f-4dc0-99c8-84594f17590c",
+		InstrumentationKey: "instrumentation key",
 		MaxBatchSize:       10,
 		MaxBatchInterval:   2 * time.Second,
 		Role:               "myapptest",
@@ -44,7 +44,7 @@ func main() {
 	lg.WithFields(logrus.Fields{
 		logrusApplicationInsightsHook.TelemetryType: logrusApplicationInsightsHook.EventTelemetry,
 		logrusApplicationInsightsHook.EventField:    sampleEvent,
-	}).Info("info")
+	}).Info("")
 
 	lgg := logrus.WithFields(logrus.Fields{
 		"field1": 1,

@@ -15,8 +15,8 @@ type Request struct {
 	measurements map[string]float64
 }
 
-func NewRequest(method string, uri string, duration time.Duration, responseCode string) *Request {
-	return &Request{method: method, uri: uri, duration: duration, responseCode: responseCode, properties: map[string]string{}, measurements: map[string]float64{}}
+func NewRequest(method string, uri string) *Request {
+	return &Request{method: method, uri: uri, properties: map[string]string{}, measurements: map[string]float64{}}
 }
 
 func (r *Request) AddProperty(key, value string) {
@@ -25,6 +25,14 @@ func (r *Request) AddProperty(key, value string) {
 
 func (r *Request) AddMeasurement(key string, value float64) {
 	r.measurements[key] = value
+}
+
+func (r *Request) SetResponseCode(responseCode string) {
+	r.responseCode = responseCode
+}
+
+func (r *Request) SetDuration(duration time.Duration) {
+	r.duration = duration
 }
 
 func (r *Request) SetSessionId(sessionId string) {

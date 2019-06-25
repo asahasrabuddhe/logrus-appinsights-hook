@@ -16,8 +16,8 @@ type Dependency struct {
 	measurements   map[string]float64
 }
 
-func NewDependency(name string, dependencyType string, target string, duration time.Duration, success bool) *Dependency {
-	return &Dependency{name: name, dependencyType: dependencyType, target: target, duration: duration, success: success}
+func NewDependency(name string, dependencyType string, target string) *Dependency {
+	return &Dependency{name: name, dependencyType: dependencyType, target: target, properties: map[string]string{}, measurements: map[string]float64{}}
 }
 
 func (d *Dependency) AddProperty(key, value string) {
@@ -26,6 +26,14 @@ func (d *Dependency) AddProperty(key, value string) {
 
 func (d *Dependency) AddMeasurement(key string, value float64) {
 	d.measurements[key] = value
+}
+
+func (d *Dependency) SetSuccess(success bool) {
+	d.success = success
+}
+
+func (d *Dependency) SetDuration(duration time.Duration) {
+	d.duration = duration
 }
 
 func (d *Dependency) SetSessionId(sessionId string) {
